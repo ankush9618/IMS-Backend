@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { asynHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { COOKIES_OPTIONS } from "../constants.js";
+import jwt from "jsonwebtoken";
 
 const generateAccessRefreshToken = async (userId) => {
     try {
@@ -106,9 +107,35 @@ const userLogout = asynHandler(async (req, res) => {
 
 })
 
+const getUserDetails = asynHandler(async (req, res) => {
+    const user = await User.findById(req.user._id).select("-password -refreshToken");
+    if (!user) {
+        throw new ApiError(401, "User Not found")
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, "User Details Fetched Successfully", user)
+        )
+})
+
+const userLoginStatus = asynHandler(async (req, res) => {
+    const token = req.cookies?.accessToken;
+    if (!token) {
+        return res.json(false)
+    }
+    const loginStatus = jwt.verify(token, process.env.ACCESS_TOKEN_KEY);
+    if (!loginStatus) {
+        return res.json(false)
+    }
+    return res.json(true)
+})
 
 export {
     userRegister,
     userLogin,
-    userLogout
+    userLogout,
+    getUserDetails,
+    userLoginStatus
 }
