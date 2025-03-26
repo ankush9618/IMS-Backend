@@ -132,10 +132,79 @@ const userLoginStatus = asynHandler(async (req, res) => {
     return res.json(true)
 })
 
+const userDetailsUpdate = asynHandler(async (req, res) => {
+    const { name, bio } = req.body;
+    if (!name || !bio) {
+        throw new ApiError(401, "All the fields are required to proceed");
+    }
+    if (name === req.user.name && bio === req.body.bio) {
+        throw new ApiError(401, "Change the Details to update")
+    }
+    const user = await User.findOneAndUpdate(
+        { _id: req.user._id },
+        {
+            name,
+            bio
+        },
+        {
+            new: true
+        }
+    ).select("-password -refreshToken");
+
+    if (!user) {
+        throw new ApiError(501, "Error Updating Details");
+    }
+    console.log("cookie", req.cookies.accessToken)
+    const { accessToken, refreshToken } = await generateAccessRefreshToken(user._id)
+    console.log("cookie", req.cookies.accessToken)
+    return res
+        .status(200)
+        .cookie("accessToken", accessToken, COOKIES_OPTIONS)
+        .cookie("refreshToken", refreshToken, COOKIES_OPTIONS)
+        .json(
+            new ApiResponse(200,
+                {
+                    user
+                }
+            )
+        )
+})
+
+const userPasswordUpdate = asynHandler(async (req, res) => {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+    if ([confirmPassword, newPassword, confirmPassword].some((item) => item === "")) {
+        throw new ApiError(401, "All the fields are required");
+    }
+    const user = await User.findById(req.user._id);
+    if (!user) {
+        throw new ApiError(401, "User does not Exists");
+    }
+    const verifyPassword = await user.isPasswordCorrect(currentPassword);
+    if (!verifyPassword) {
+        throw new ApiError(401, "Current Password is Incorrect");
+    }
+    if (currentPassword === newPassword) {
+        throw new ApiError(401, "Both Password is Same")
+    }
+    if (newPassword !== confirmPassword) {
+        throw new ApiError(401, "New Password does not Match");
+    }
+    user.password = newPassword;
+    user.save();
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, "Password Updated Successfully", user)
+        )
+})
+
 export {
     userRegister,
     userLogin,
     userLogout,
     getUserDetails,
-    userLoginStatus
+    userLoginStatus,
+    userDetailsUpdate,
+    userPasswordUpdate
 }
