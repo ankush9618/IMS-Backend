@@ -3,7 +3,7 @@ import bcrypt from "bcrypt";
 import jwt from 'jsonwebtoken';
 
 
-const userSchema = mongoose.Schema({
+const userSchema = new mongoose.Schema({
     name: {
         type: String,
         required: [true, "Name is Required"]
@@ -81,5 +81,5 @@ userSchema.methods.generateRefreshToken = async function () {
     )
 }
 
-export const User = mongoose.model("user", userSchema);
+export const User = mongoose.model("User", userSchema);
 
